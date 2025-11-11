@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wi-Fi Portal</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: grid; place-items: center; min-height: 90vh; background-color: #f4f4f4; color: #333; }
+        .container { background: #fff; padding: 2rem 3rem; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; }
+        input { font-size: 1.2rem; padding: 0.5rem; margin-top: 0.5rem; margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 5px; }
+        button { font-size: 1.2rem; padding: 0.7rem 1.5rem; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        .mac-address { font-size: 0.9rem; color: #666; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Guest Wi-Fi</h1>
+        <p>Enter your M-Pesa phone number to make your payment.</p>
+        
+        <div class="mac-address">
+            Your Device: {{ session.mac_address }}
+        </div>
+        
+        <form method="POST">
+            {% csrf_token %}
+            
+            <input type="hidden" name="session_id" value="{{ session.id }}">
+            
+            <div>
+                <label for="phone">Phone (e.g., 2547...)</label><br>
+                <input type="tel" id="phone" name="phone_number" placeholder="254712345678" required>
+            </div>
+            
+            <button type="submit">Pay Now</button>
+        </form>
+
+    </div>
+
+</body>
+</html>
