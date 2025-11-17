@@ -13,8 +13,10 @@ class GuestSession(models.Model):
     
     # the phone number our user entered
     phone_number = models.CharField(max_length=15, null=True, blank=True)
+    checkout_request_id = models.CharField(max_length=100, null=True, blank=True)
     # A simple flag to track if payment is complete
     is_paid = models.BooleanField(default=False)
+    
     # timestamp
     created_at = models.DateTimeField(auto_now_add=True) # This will be set on creation
     paid_at = models.DateTimeField(null=True, blank=True) # This will be set once payment has been made

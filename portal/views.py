@@ -1,8 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from .models import GuestSession
-
-
+from .mpesa_utils import trigger_stk_push
+from django.urls import reverse # A helper for creating URLs
+from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
+import json
 
 def connect_view(request):
     """
@@ -14,7 +17,7 @@ def connect_view(request):
     if request.method == 'POST':
         # get data from the submitted form
 
-        phone_number = request.POST.get('phone_number')
+        phone_number = request.POST.get('phone_number') # Get the phone number from the data
         session_id = request.POST.get('session_id') # get the hidden ID field
         try:
             # get the session in the database
@@ -22,23 +25,41 @@ def connect_view(request):
             # update the session with the phone number
             session.phone_number = phone_number
             session.save()
+            # This is just the test anmount
+            amount = 1
 
-            print(f"--- PHONE UPDATED ---")
-            print(f"Session:{session.id}")
-            print(f"phone: {session.phone_number}")
-            print(f"------------------------")
+            print (f"---TRIGGERING STK PUSH for {phone_number}----")
 
-            # TODO: Redirect to a user to a waitting page
+            checkout_request_id = trigger_stk_push(
 
-           # context = {'session': session, 'message': 'phone number saved'}
+                    phone_number=phone_number,
+                    amount=amount,
+                    session_id=session_id # send the session id for tracking
+                    )
+
+            session.checkout_request_id = checkout_request_id
+            session.save()
+
+            print(f"----STK PUSH   INITIATED, ID: {checkout_request_id}---")
+
             # after collecting the user's details, redirect the user to a waitting page as we perform mpesa calls
             return redirect('wait_for_payment_view', session_id=session.id)
 
         except GuestSession.DoesNotExist:
-            return HttpResponse("Error: Invalid session. Please  connect to the wifi", status=400)
+            return HttpResponse("Error: Invalid session. Please  reconnect to the wifi", status=400)
 
-        # TODO: we will trigger the mpesa push here
-        
+        except Exception as e:
+            # Handle Mpesa or other errors
+            print(f"----ERROR IN STK PUSH")
+            print(f"Error: {e}")
+            print(f"----------------------------")
+           # show an error page
+            context = {
+                   'session': session,
+                   'error': f"payment Error:{e}"
+            }
+            return render(request, 'portal/payment_form.html', context)
+
         # Handle page load - GET request
     else:
         # Get the user's mac Address from the query parameter
@@ -55,14 +76,6 @@ def connect_view(request):
                 mac_address=user_mac
                 )
 
-        if created:
-            print(f"---NEW SESSION CREATED----")
-            print(f"MAC: {session.mac_address}")
-            print(f"---------------------")
-        else:
-            print(f"--EXISTING SESSION FOUND---")
-            print(f"MAC: {session.mac_address}")
-            print(f"---------------------")
         context = {
                 'session': session
                 }
@@ -78,5 +91,55 @@ def wait_for_payment_view(request, session_id):
             }
     return render(request, 'portal/wait_for_payment.html', context)
 
+@csrf_exempt # This tells django to allow POSTs from safaricom
+def mpesa_callback_view(request):
+    """ 
+    - This function gets the response from safarcom to confirm that the payment
+    was successful or not
+
+    """
+    if request.method != 'POST':
+        return HttpResponse('Invalid Method', status=400)
+    print("---MPESA CALLBACK RECEIVED----")
+
+    # get the json data from the request body
+    try:
+        body = json.loads(request.body)
+        print(f"data: {body}") # log the full respose to the terminal
+    except json.JSONDecodeError:
+        print("Error: Invalid JSON received")
+        return HttpResponse("Invalid JSON", status=400)
+
+    # parse the JSON from safaricom
+    try:
+        data = body.get('Body', {}).get('stkCallback', {})
+        result_code = data.get('ResultCode')
+
+        # check if payment was successfull
+        if result_code == 0:
+            print("PAYMENT SUCCESSFUL..")
+
+            # get the ID and find our sesison
+            checkout_id = data.get('CheckoutRequestID')
+
+            # get the session from the database
+            session = GuestSession.objects.get(checkout_request_id=checkout_id)
+
+            # update our session
+
+            session.is_paid = True
+            session.paid_at= timezone.now() # mark the payment time
+            session.save()
+
+            print(f"Session {session.id} marked as PAID")
+        else:
+            # payment failed or was canceled
+            print(f"PAYMENT FAILED. Resultcode:{result_code}")
+            # TODO: Mark the sesion as failed 
 
 
+    except Exception as e:
+        # Log errors during processing
+        print(f"Callback processing error: {e}")
+
+    return JsonResponse({'ResultCode':0, "ResultDesc": "Accepted"})
