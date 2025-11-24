@@ -7,35 +7,68 @@
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: grid; place-items: center; min-height: 90vh; background-color: #f4f4f4; color: #333; }
         .container { background: #fff; padding: 2rem 3rem; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; }
-        
-        /* Simple loading spinner */
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #007bff;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Style for our new success message */
+        .success { color: #155724; background-color: #d4edda; border: 1px solid #c3e6cb; padding: 1rem; border-radius: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Confirm Payment</h1>
+    <div class="container" id="payment-container">
         
-        <p>A payment prompt has been sent to your phone. Please enter your M-Pesa PIN.</p>
-        <p><strong>This page will update automatically.</strong></p>
+        <h1 id="heading">Confirm Payment</h1>
+        
+        <p id="message">A payment prompt has been sent to your phone. Please enter your M-Pesa PIN.</p>
+        
+        <div class="spinner" id="spinner"></div>
 
-        <div class="spinner"></div>
+        <span id="session-data" 
+              data-session-id="{{ session.id }}"
+              data-check-url="{% url 'check_payment_status_view' session.id %}">
+        </span>
 
-        <span id="session-id" data-id="{{ session.id }}"></span>
     </div>
+
+    <script>
+        // Find our HTML elements
+        const container = document.getElementById('payment-container');
+        const heading = document.getElementById('heading');
+        const message = document.getElementById('message');
+        const spinner = document.getElementById('spinner');
+        
+        // Get the URL to check from our hidden span
+        const checkUrl = document.getElementById('session-data').dataset.checkUrl;
+
+        // This function will run every 3 seconds
+        const intervalId = setInterval(() => {
+            
+            // 'fetch' is the modern way to make an API call
+            fetch(checkUrl)
+                .then(response => response.json()) // Get the JSON from the response
+                .then(data => {
+                    console.log('Checking payment status:', data.status);
+                    
+                    // 4. CHECK THE STATUS!
+                    if (data.status === 'paid') {
+                        // 5. PAYMENT IS COMPLETE!
+                        clearInterval(intervalId); // Stop checking
+                        
+                        // 6. Update the page!
+                        heading.innerText = 'Success!';
+                        message.innerText = 'Payment received. You are now online!';
+                        spinner.style.display = 'none'; // Hide the spinner
+                        container.classList.add('success'); // Add the green 'success' style
+                    }
+                    // else: status is 'pending', so we do nothing and let it check again
+                })
+                .catch(error => {
+                    console.error('Error checking status:', error);
+                    // You could show an error message here
+                });
+                
+        }, 3000); // Poll every 3000 milliseconds (3 seconds)
+    </script>
 
 </body>
 </html>

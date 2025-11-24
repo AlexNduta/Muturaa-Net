@@ -6,7 +6,7 @@ from django.urls import reverse # A helper for creating URLs
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 import json
-
+from .unifi_utils import authorize_user
 def connect_view(request):
     """
     - Majourly handle form submissions
@@ -130,8 +130,13 @@ def mpesa_callback_view(request):
             session.is_paid = True
             session.paid_at= timezone.now() # mark the payment time
             session.save()
+            # calculate time
+            minutes_to_add = 60
+
+            authorize_user(session.mac_address, minutes=minutes_to_add)
 
             print(f"Session {session.id} marked as PAID")
+
         else:
             # payment failed or was canceled
             print(f"PAYMENT FAILED. Resultcode:{result_code}")
@@ -143,3 +148,20 @@ def mpesa_callback_view(request):
         print(f"Callback processing error: {e}")
 
     return JsonResponse({'ResultCode':0, "ResultDesc": "Accepted"})
+
+def check_payment_status_view(request, session_id):
+    """
+    - An API endpoint that checks if the GuestSession.is_paid is true
+    - It querries the database
+    """
+    try:
+        # find the session
+        session = GuestSession.objects.get(id=session_id)
+        
+        # do the necessary check
+        if session.is_paid:
+            return JsonResponse({'status': 'paid'})
+        else:
+            return JsonResponse({'status': 'pending'})
+    except GuestSession.DoesNotExist:
+        return JsonResponse({'status': 'Not_found'}, status=404)

@@ -1,0 +1,93 @@
+from pyunifi.controller import Controller
+import os
+# import ssl
+import requests
+import json
+import urllib3
+
+# bypass the ssl warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+class TinyUnifiClient:
+    def __init__(self):
+        self.host = os.getenv('UNIFI_HOST')
+        self.port = os.getenv('UNIFI_PORT')
+        self.username = os.getenv('UNIFI_USER')
+        self.password = os.getenv('UNIFI_PASS')
+        # accessible URL
+        # https://localhost:8443
+        self.base_url = f"https://{self.host}:{self.port}"
+
+        # new session to store cookies
+        self.session = requests.Session()
+        self.session.verrify = False # ignore the SSL cert errors
+        self.csrf_token = None
+    def login(self):
+        """
+        - Login into Unifi OS and get the required cookies/tokens
+
+        """
+        # login url" https://localhost:8443/api/auth/login
+
+        login_url = f"{self.base_url}/api/auth/login"
+        payload = {'username': self.username, 'password': self.password}
+        headers = {'Content-Type': 'application/json'}
+
+        print(f"---loging in to {login_url}----")
+
+        try:
+            r = self.session.post(login_url, json=payload, headers=headers)
+            r.raise_for_status()
+            # get the CSRF token for future requests
+            # it is sent via the header login response
+            self.csrf_token = r.headers.get('x-csrf-token')
+            print('---Login Succesful! ---')
+            return True
+        except Exception as e:
+            print(f"CRITICAL: Login failed: {e}")
+            raise e
+
+    def authorize_guest(self, mac, minutes):
+        """
+        - send an authorize command
+        """
+        auth_url = f"{self.base_url}/proxy/network/api/s/default/cmd/stamgr"
+
+        payload = {
+                'cmd': 'authorize-guest',
+                'mac': mac.lower(),
+                'minutes': minutes
+                }
+
+        # include the csrf token got dutin login
+        headers = {
+                'Content-Type': 'application/json',
+                'x-csrf-token': self.csrf_token
+                }
+        print(f"--Authorizing {mac}---")
+
+        try:
+            r = self.session.post(auth_url, json=payload, headers=headers)
+            r.raise_for_status()
+            print("---Authorisation command sent! ----")
+            return true
+        except Exception as e:
+            print (f"Authorisation failed {e}")
+            if r is  not None:
+                print(f"Response: {r.text}")
+            return False
+
+
+# Helper function   for views
+def authorize_user(mac_address, minutes=60):
+    """
+    - wrapper function to be called by views.py
+    - creates a unifi-cliet object and calls the  functions
+    """
+    try:
+        client = TinyUnifiClient()
+        client.login()
+        return client.authorize_guest(mac_address, minutes)
+    except Exception as e:
+        print(f"Unifi Error: {e}")
+        return False
