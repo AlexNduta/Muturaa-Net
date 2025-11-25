@@ -32,7 +32,9 @@ DEBUG = True
 ALLOWED_HOSTS = [
         'localhost',
         '.ngrok-free.app',
-        '127.0.0.1'
+        '127.0.0.1',
+        '45.76.249.161',
+        'muturaanet.hostnoma.one'
         ]
 CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.app']
 

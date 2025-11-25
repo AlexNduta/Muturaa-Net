@@ -16,42 +16,31 @@
 <body>
 
     <div class="container">
-        
-        <h1>Select a Package</h1>
+        <h1>Muturaa Net</h1>
+        <p>Enter your M-Pesa phone number to begin.</p>
+        {% if error %}
+            <div style="color: red; background: #ffebee; padding: 10px; border-radius: 5px; margin-bottom: 1rem;">
+                <strong>Error:</strong> {{ error }}
+            </div>
+        {% endif %}
+        <div class="mac-address">
+            Your Device: {{ session.mac_address }}
+        </div>
         
         <form method="POST">
-            
             {% csrf_token %}
-
+            
             <input type="hidden" name="session_id" value="{{ session.id }}">
-
-            <div style="text-align: left; margin-bottom: 20px;">
-                {% for plan in plans %}
-                    <div style="border: 1px solid #ddd; padding: 10px; margin-bottom: 5px; border-radius: 5px;">
-                        <input type="radio" id="plan_{{ plan.id }}" name="plan_id" value="{{ plan.id }}" required>
-                        <label for="plan_{{ plan.id }}">
-                            <strong>{{ plan.name }}</strong> - {{ plan.price }} KSh
-                            <br>
-                            <small>{{ plan.duration_minutes }} Minutes Access</small>
-                        </label>
-                    </div>
-                {% empty %}
-                    <p>No plans available. Please configure WiFi Plans in Admin.</p>
-                {% endfor %}
-            </div>
-
+            
             <div>
-                <label for="phone">M-Pesa Number:</label><br>
-                <input type="tel" id="phone" name="phone_number" placeholder="2547..." required>
+                <label for="phone">Phone (e.g., 2547...)</label><br>
+                <input type="tel" id="phone" name="phone_number" placeholder="254712345678" required>
             </div>
-
+            
             <button type="submit">Pay Now</button>
-        
         </form>
+
     </div>
 
 </body>
-</html>
-</html>
-</html>
 </html>

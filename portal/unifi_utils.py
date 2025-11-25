@@ -56,8 +56,7 @@ class TinyUnifiClient:
         # The path is /proxy/network/api/s/{site_id}/cmd/stamgr
         # stamgr is the station manager endpoint
         auth_url = f"{self.base_url}/proxy/network/api/s/default/cmd/stamgr"
-        
-    payload = {
+        payload = {
             'cmd': 'authorize-guest',
             'mac': mac.lower(),
             'minutes': minutes

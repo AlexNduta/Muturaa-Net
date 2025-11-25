@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
-from .models import GuestSession
+from .models import GuestSession, WifiPlan
 from .mpesa_utils import trigger_stk_push
 from django.urls import reverse # A helper for creating URLs
 from django.views.decorators.csrf import csrf_exempt
@@ -9,7 +9,7 @@ import json
 from .unifi_utils import authorize_user
 def connect_view(request):
     """
-    - Majourly handle form submissions
+    - Majorly handle form submissions
     - Get user's phone numbers that we will used to make Mpesa push notification
     - fetch the hiden ID so that we can get a session
     - 
@@ -19,14 +19,17 @@ def connect_view(request):
 
         phone_number = request.POST.get('phone_number') # Get the phone number from the data
         session_id = request.POST.get('session_id') # get the hidden ID field
+        plan_id = request.POST.get('plan_id') # get the selected plan
         try:
             # get the session in the database
             session = GuestSession.objects.get(id=session_id)
-            # update the session with the phone number
+
+            plan = WifiPlan.objects.get(id=plan_id) 
+            # update the session with the phone number, plan and price
             session.phone_number = phone_number
+            session.plan = plan
             session.save()
-            # This is just the test anmount
-            amount = 1
+            amount = plan.price
 
             print (f"---TRIGGERING STK PUSH for {phone_number}----")
 
@@ -46,21 +49,21 @@ def connect_view(request):
             return redirect('wait_for_payment_view', session_id=session.id)
 
         except GuestSession.DoesNotExist:
+            # incase of an error, fetch the plans again to render the plans
             return HttpResponse("Error: Invalid session. Please  reconnect to the wifi", status=400)
 
         except Exception as e:
             # Handle Mpesa or other errors
-            print(f"----ERROR IN STK PUSH")
-            print(f"Error: {e}")
-            print(f"----------------------------")
-           # show an error page
+
+            plans = WifiPlan.objects.all()
             context = {
                    'session': session,
+                   'plans': plans,
                    'error': f"payment Error:{e}"
             }
             return render(request, 'portal/payment_form.html', context)
 
-        # Handle page load - GET request
+        # Handle page load and show the menu
     else:
         # Get the user's mac Address from the query parameter
         # unifi sends it as a an id
@@ -76,8 +79,12 @@ def connect_view(request):
                 mac_address=user_mac
                 )
 
+        # get all the plans to display
+        plans = WifiPlan.objects.all().order_by('price')
+
         context = {
-                'session': session
+                'session': session,
+                'plans': plans # send the plans to HTML
                 }
 
         return render(request, 'portal/payment_form.html', context)
@@ -130,8 +137,8 @@ def mpesa_callback_view(request):
             session.is_paid = True
             session.paid_at= timezone.now() # mark the payment time
             session.save()
-            # calculate time
-            minutes_to_add = 60
+            # calculate time the user will be allowed to connect to the network
+            minutes_to_add = session.plan.duration_in_minutes
 
             authorize_user(session.mac_address, minutes=minutes_to_add)
 
