@@ -11,3 +11,5 @@ services:
       - .env
     volumes:
       - .:/app
+      # map static files of the VPS to the container
+      - ./staticfiles:/app/staticfiles
