@@ -27,7 +27,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-86_v040el#7oia*1p%%*1lmsc&5qnnn4d1)97or+13g=toub(='
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+#DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
         'localhost',
@@ -36,7 +37,7 @@ ALLOWED_HOSTS = [
         '45.76.249.161',
         'muturaanet.hostnoma.one'
         ]
-CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.app']
+CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.app', 'https://muturaanet.hostnoma.one']
 
 # Application definition
 
